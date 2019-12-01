@@ -3,6 +3,7 @@ import random
 from datetime import datetime
 
 from airflow import DAG
+from airflow.operators.bash_operator import BashOperator
 from airflow.operators.dummy_operator import DummyOperator
 from airflow.operators.python_operator import PythonOperator, BranchPythonOperator
 
@@ -37,6 +38,10 @@ def _print_process_start_op() -> PythonOperator:
     return PythonOperator(task_id='print_process_start', python_callable=__callable_fn)
 
 
+def _get_current_user_op() -> BashOperator:
+    return BashOperator(task_id='get_current_user', bash_command='echo $USER')
+
+
 def _skip_table_creation_op(*args, **kwargs) -> DummyOperator:
     return DummyOperator(task_id='skip_table_creation', *args, **kwargs)
 
@@ -68,14 +73,10 @@ for dag_id, dag_config in config.items():
     with DAG(dag_id, default_args={**default_args, **dag_config}) as dag:
         globals()[dag_id] = dag
 
-        print_process_start_op_ = _print_process_start_op()
-        check_table_exists_branch_op_ = _check_table_exists_branch_op()
-        create_table_op_ = _create_table_op()
-        skip_table_creation_op_ = _skip_table_creation_op()
-        insert_new_row_op_ = _insert_new_row_op(depends_on_past=False)
-        querty_the_table_op_ = _query_the_table_op(depends_on_past=False)
-
-        check_table_exists_branch_ops = [create_table_op_, skip_table_creation_op_]
-
-        print_process_start_op_ >> check_table_exists_branch_op_ >> check_table_exists_branch_ops \
-            >> insert_new_row_op_ >> querty_the_table_op_
+        # @formatter:off
+        _print_process_start_op() \
+            >> _get_current_user_op() \
+            >> _check_table_exists_branch_op() >> [_create_table_op(), _skip_table_creation_op()] \
+            >> _insert_new_row_op(trigger_rule='none_failed') \
+            >> _query_the_table_op()
+        # @formatter:on
