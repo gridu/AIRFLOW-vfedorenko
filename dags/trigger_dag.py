@@ -87,7 +87,7 @@ def _process_results_sub_dag_op(parent_dag_id_, trigger_dag_id_) -> SubDagOperat
 
 dag_id = 'trigger_dag'
 with DAG(dag_id, default_args=default_args, schedule_interval=None) as dag:
-    trigger_dag_id = Variable.get('dag_id', 'database_1_extractor')
+    trigger_dag_id = Variable.get('dag_id', 'users_table_processor')
 
     # @formatter:off
     _file_sensor() \
